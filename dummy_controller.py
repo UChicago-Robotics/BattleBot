@@ -2,7 +2,7 @@ import json
 import zmq
 import json
 
-ip = "192.168.8.232"
+ip = "192.168.56.1"
 port = 5555
 
 context = zmq.Context()
