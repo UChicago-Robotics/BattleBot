@@ -1,6 +1,7 @@
 import zmq
 import json
 import sys
+import traceback
 
 from serial import Serial
 from time import sleep, perf_counter
@@ -8,7 +9,10 @@ from math import copysign
 from typing import Tuple
 from threading import Thread, Timer
 
-def clamp(mn, mx, n): return min(max(n, mn), mx)
+
+def clamp(mn, mx, n):
+    return min(max(n, mn), mx)
+
 
 # Shamelessly ripped from WPILib's differential drive
 def differential_ik(x_vel: float, z_rot: float) -> Tuple[float, float]:
@@ -35,6 +39,7 @@ def differential_ik(x_vel: float, z_rot: float) -> Tuple[float, float]:
 
         return (speed_l, speed_r)
 
+
 class RobotController:
     def __init__(self, host, port):
         print(f"Listening on {host} : {port}")
@@ -42,31 +47,29 @@ class RobotController:
         context = zmq.Context()
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"tcp://{host}:{port}")
-        
+
         # serial_kick = Serial('/dev/ttyS1', 38400)
         # serial_wheels = Serial('/dev/ttyUSB0', 38400)
 
-        #self.rclaw_kick = Roboclaw(serial_kick)
-        #self.rclaw_wheels = Roboclaw(serial_wheels)
-        
+        # self.rclaw_kick = Roboclaw(serial_kick)
+        # self.rclaw_wheels = Roboclaw(serial_wheels)
+
         self.prev_command = None
         # Prev wheels speed (python_roboclaw had some issues about reporting speeds)
         self.prev_wheels = (0.0, 0.0)
         # Linear acceleration rate (in percent output/s)
         self.ramp = 1.0
         # Last frame time
-        self.prev_time = 0.0 # seconds
+        self.prev_time = 0.0  # seconds
 
-        # check when most recent heartbeat packet was received, terminate if 
+        # check when most recent heartbeat packet was received, terminate if
         # it has been more than 1 second without a packet
-        self.heartbeat_time = 0.0 # time until last heartbeat
-        self.heart_attack_threshold = 10.0 # latency after which robot will shut down
+        self.heartbeat_time = 0.0  # time until last heartbeat
+        self.heart_attack_threshold = 10.0  # latency after which robot will shut down
+        self.heartbeat_delta = 0.5
         self.dead = False
-        
-        Timer(0.5, self.heartbeat).start()
 
     def execute(self, cjson: json):
-
         right_stick = cjson["right_stick_y"]
         left_stick = cjson["left_stick_y"]
         right_trigger = cjson["right_trigger"]
@@ -101,50 +104,67 @@ class RobotController:
            self.rclaw_kick.forward_backward_m1(rclaw_kick_target)
         """
 
-        if self.prev_command == None: self.prev_command = cjson
+        if self.prev_command == None:
+            self.prev_command = cjson
 
         print(cjson)
 
     # main loo for robot controller
     def listen(self):
         self.prev_time = perf_counter()
+        receiving_data = False
 
         try:
             while not self.dead:
                 # load control packets into json object
-                controller_state = self.socket.recv_string()
-                cs = controller_state.replace("\\", "").strip("\"")
-                controller_json = {k: int(v) for (k, v) in dict(json.loads(cs)).items()}
+                packet = self.socket.recv_string()
+                packet = packet.replace("\\", "").strip('"')
+                packet = json.loads(packet)
+
+                # start hearbeat protocol if this is our first packet
+                if not receiving_data:
+                    self.heartbeat(self.heartbeat_delta)
+                    receiving_data = True
 
                 # check for packet type
-                if controller_json["type"] == "heartbeat":
+                if packet["type"] == "heartbeat":
                     self.heartbeat_time = 0.0
-                elif controller_json["tye"] == "controller":
+                elif packet["type"] == "controller":
+                    controller_json = {
+                        k: int(v) for (k, v) in dict(packet["data"]).items()
+                    }
                     self.execute(controller_json)
                     self.socket.send_string(f"Done")
                     self.heartbeat_time = 0.0
 
                 self.prev_time = perf_counter()
-
-        except BaseException as e:
-            print(e)
+        except BaseException:
+            print(traceback.format_exc())
             self.motor_kill()
             sys.exit()
 
     # check the time from the last heartbeat packet, kill the robot if threshold has passed
-    def heartbeat(self):
+    def heartbeat(self, delta: float):
+        self.heartbeat_time += delta
+        print("Checking heartbeat...")
+
         if self.heartbeat_time > self.heart_attack_threshold:
+            print(f"Heartbeat not found after threshold time of {self.heart_attack_threshold} seconds, terminating...")
             self.motor_kill()
             self.dead = True
+        
+        Timer(delta, self.heartbeat, args=(delta,)).start()
 
     # kill the robot
     def motor_kill(self):
         print("robot is dead")
         self.dead = True
+        sys.exit()
 
 def main():
     r = RobotController("*", 5555)
     r.listen()
+
 
 if __name__ == "__main__":
     main()
