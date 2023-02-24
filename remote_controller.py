@@ -6,7 +6,7 @@ import zmq
 import time
 import json
 
-ip = "192.168.8.232"
+ip = "10.150.71.206"
 port = 5555
 
 context = zmq.Context()
