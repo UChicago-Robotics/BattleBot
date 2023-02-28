@@ -126,6 +126,7 @@ class RobotController:
                 #     continue
                 # else:
                 #     waiting_for_first_packet = False
+                packet = self.socket.recv_string()
                 packet = packet.replace("\\", "").strip('"')
                 packet = json.loads(packet)
 
