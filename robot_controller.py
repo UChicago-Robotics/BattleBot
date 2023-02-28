@@ -113,16 +113,19 @@ class RobotController:
         waiting_for_first_packet = True
 
         try:
-            while self.is_alive:
-                if not waiting_for_first_packet:
-                    self.is_alive = self.alive()
-
-                # load control packets into json object
-                packet = self.socket.recv_string()
-                if packet is None and waiting_for_first_packet:
-                    continue
-                else:
-                    waiting_for_first_packet = False
+            while self.alive():
+            # this code exists only if the odroid runs code while it is not receiving signals
+            # it buffers the heartbeat protocol to only run after we receive the first packet
+            # while self.is_alive:
+                # if not waiting_for_first_packet:
+                #     self.is_alive = self.alive()
+                #
+                # # load control packets into json object
+                # packet = self.socket.recv_string()
+                # if packet is None and waiting_for_first_packet:
+                #     continue
+                # else:
+                #     waiting_for_first_packet = False
                 packet = packet.replace("\\", "").strip('"')
                 packet = json.loads(packet)
 
