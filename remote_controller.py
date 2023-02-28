@@ -1,9 +1,7 @@
 import pygame as pg
 import traceback
 import math
-import json
 import zmq
-import time
 import json
 
 ip = "10.150.71.206"
