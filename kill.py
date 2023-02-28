@@ -1,5 +1,4 @@
 from serial import Serial
-from roboclaw import Roboclaw
 
 serial_kick = Serial('/dev/ttyS1', 38400)
 serial_wheels = Serial('/dev/ttyUSB0', 38400)

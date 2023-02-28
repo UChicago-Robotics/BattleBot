@@ -7,7 +7,6 @@ from serial import Serial
 from time import sleep, perf_counter
 from math import copysign
 from typing import Tuple
-from threading import Thread, Timer
 
 
 def clamp(mn, mx, n):
@@ -64,10 +63,9 @@ class RobotController:
 
         # check when most recent heartbeat packet was received, terminate if
         # it has been more than 1 second without a packet
-        self.heartbeat_time = 0.0  # time until last heartbeat
-        self.heart_attack_threshold = 10.0  # latency after which robot will shut down
-        self.heartbeat_delta = 0.5
-        self.dead = False
+        self.heartbeat_time = perf_counter() # time until last heartbeat
+        self.heart_attack_threshold = 1.0  # latency after which robot will shut down
+        self.is_alive = True
 
     def execute(self, cjson: json):
         right_stick = cjson["right_stick_y"]
@@ -75,7 +73,7 @@ class RobotController:
         right_trigger = cjson["right_trigger"]
         left_trigger = cjson["left_trigger"]
 
-        # this code is all paurticular to the roboclaw motordriver API,
+        # this code is all particular to the roboclaw motordriver API,
         # so it needs to be changed
         """
         # Differential driving
@@ -109,27 +107,28 @@ class RobotController:
 
         print(cjson)
 
-    # main loo for robot controller
+    # main loop for robot controller
     def listen(self):
         self.prev_time = perf_counter()
-        receiving_data = False
+        waiting_for_first_packet = True
 
         try:
-            while not self.dead:
+            while self.is_alive:
+                if not waiting_for_first_packet:
+                    self.is_alive = self.alive()
+
                 # load control packets into json object
                 packet = self.socket.recv_string()
+                if packet is None and waiting_for_first_packet:
+                    continue
+                else:
+                    waiting_for_first_packet = False
                 packet = packet.replace("\\", "").strip('"')
                 packet = json.loads(packet)
 
-                # start hearbeat protocol if this is our first packet
-                if not receiving_data:
-                    self.heartbeat(self.heartbeat_delta)
-                    receiving_data = True
-
                 # check for packet type
-                if packet["type"] == "heartbeat":
-                    self.heartbeat_time = 0.0
-                elif packet["type"] == "controller":
+                if packet["type"] == "controller":
+                    self.heartbeat_time = perf_counter()
                     controller_json = {
                         k: int(v) for (k, v) in dict(packet["data"]).items()
                     }
@@ -144,22 +143,17 @@ class RobotController:
             sys.exit()
 
     # check the time from the last heartbeat packet, kill the robot if threshold has passed
-    def heartbeat(self, delta: float):
-        self.heartbeat_time += delta
-        print("Checking heartbeat...")
-
-        if self.heartbeat_time > self.heart_attack_threshold:
-            print(f"Heartbeat not found after threshold time of {self.heart_attack_threshold} seconds, terminating...")
-            self.motor_kill()
-            self.dead = True
-        
-        Timer(delta, self.heartbeat, args=(delta,)).start()
+    def alive(self):
+        if perf_counter() - self.heartbeat_time > self.heart_attack_threshold:
+            return False
+        return True
 
     # kill the robot
     def motor_kill(self):
         print("robot is dead")
         self.dead = True
         sys.exit()
+
 
 def main():
     r = RobotController("*", 5555)
