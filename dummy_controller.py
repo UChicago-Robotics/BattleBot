@@ -1,15 +1,13 @@
-import json
 import zmq
 import json
 
-ip = "192.168.56.1"
+ip = "127.0.0.1"
 port = 5555
 
 context = zmq.Context()
 socket = context.socket(zmq.REQ)
 socket.connect(f"tcp://{ip}:{port}")
-print(f"Connected to {ip} {port}")
-
+print(f"Attempting to connect to {ip}:{port}...")
 
 controls = {
     "type": "controller",
@@ -23,7 +21,7 @@ controls = {
 
 while True:
     controls_json = json.dumps(controls)
-    socket.send_string(controls_json)
+    socket.send_json(controls_json)
 
     message = socket.recv_string()
     print(f"Server replied: {message}\n")

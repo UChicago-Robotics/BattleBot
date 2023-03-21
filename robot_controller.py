@@ -42,7 +42,6 @@ def differential_ik(x_vel: float, z_rot: float) -> Tuple[float, float]:
 
 class RobotController:
     def __init__(self, host, port):
-        print(f"Listening on {host} : {port}")
 
         context = zmq.Context()
         self.socket = context.socket(zmq.REP)
@@ -162,9 +161,10 @@ class RobotController:
         sys.exit()
 
 def main():
-    r = RobotController("*", 5555)
+    host, port = "*", 5555
+    r = RobotController(host, port)
+    print(f"Listening on {host}:{port}")
     r.listen()
-
 
 if __name__ == "__main__":
     main()
