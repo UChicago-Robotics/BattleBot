@@ -7,7 +7,8 @@ from serial import Serial
 from time import sleep, perf_counter
 from math import copysign
 from typing import Tuple
-from threading import Thread, Timer
+
+# from threading import Thread, Timer
 
 
 def clamp(mn, mx, n):
@@ -41,20 +42,52 @@ def differential_ik(x_vel: float, z_rot: float) -> Tuple[float, float]:
 
 
 class RobotController:
-    def __init__(self, host, port):
+    # Explanation of VESC (i.e. drivetrain motor controller) CAN bus messages
+    # -----------------------------------------------------------------------
+    # 
+    # Each CAN bus message has two parts (for our purposes):
+    #
+    # (1) An "arbitration ID" that uniquely identifies the type of message being sent (i.e. setting
+    #     the duty cycle) and the target controller ID
+    # (2) A data segment that contains a command payload (if any) of up to 8 bytes
+    #
+    # Example
+    # -------
+    #
+    # To set the duty cycle to 10% for controller 0,
+    # 
+    # - The arbitration ID is: 0x00000000
+    #                                  ^^ Controller ID 0 (up to 256 IDs available)
+    #                            ^^^^^^   VESC message type (0x000000 corresponds to "set duty cycle")
+    # - The payload/data is:   0x00002710
+    #                            ^^^^^^^^ "set duty cyle" expects a number from 0 to 100_000, where
+    #                                     50_000 is a 50% duty cycle. So, 0x2710 corresponds to
+    #                                     0.1 * 100_000.
+    CAN_ADDRESS = "can0"
+    # How often the CAN bus is transmitting/receiving messages
+    CAN_BITRATE = 125000 # Hz
 
+    CONTROLLER_ID_L = 0x00000000
+    CONTROLLER_ID_R = 0x00000001
+
+    # Construct a byte array containing a duty cycle payload for CAN transmission.
+    @staticmethod
+    def duty_cycle_can(cycle: float) -> bytes:
+        (cycle * 100000).to_bytes(4, byteorder="big")
+
+    def __init__(self, host, port):
         context = zmq.Context()
+
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"tcp://{host}:{port}")
 
-        # serial_kick = Serial('/dev/ttyS1', 38400)
-        # serial_wheels = Serial('/dev/ttyUSB0', 38400)
+        # Drivetrain CAN bus sockets
+        self.can = can.Bus(bustype="socketcan", channel=CAN_ADDRESS, bitrate=CAN_BITRATE)
 
-        # self.rclaw_kick = Roboclaw(serial_kick)
-        # self.rclaw_wheels = Roboclaw(serial_wheels)
+        self.rclaw_spinner = Roboclaw(Serial("/dev/ttyS1", 38400))
 
         self.prev_command = None
-        # Prev wheels speed (python_roboclaw had some issues about reporting speeds)
+        # Prev wheels speed
         self.prev_wheels = (0.0, 0.0)
         # Linear acceleration rate (in percent output/s)
         self.ramp = 1.0
@@ -68,40 +101,64 @@ class RobotController:
         self.heartbeat_delta = 0.5
         self.dead = False
 
+    # Command the drivetrain ESC duty cycle to the specified x velocity and z rotation.
+    #
+    # Parameters
+    # ----------
+    # x_vel:
+    #   forward velociy value from -1.0 to 1.0
+    # z_rot:
+    #   rotation value from -1.0 to 1.0
+    def drive(self, x_vel: float, z_rot: float):
+        delta = perf_counter() - self.prev_time  # seconds
+
+        target_wheels = differential_ik(l, r)
+        target_diff = (
+            min(target_wheels[0] - self.prev_wheels[0], delta * self.ramp),
+            min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp),
+        )
+
+        self.can_l.send(
+            can.Message(
+                arbitration_id=CONTROLLER_ID_L,
+                data=RobotController.duty_cycle_can(
+                    clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
+                ),
+                is_extended_id=True,
+            )
+        )
+        self.can_r.send(
+            can.Message(
+                arbitration_id=CONTROLLER_ID_R,
+                data=RobotController.duty_cycle_can(
+                    clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
+                ),
+                is_extended_id=True,
+            )
+        )
+
+    # Command the spinner
+    #
+    # Parameters
+    # ----------
+    # vel:
+    #   velociy value from -1.0 to 1.0
+    def spin(self, vel: float):
+        self.rclaw_spinner.forward_backward_m1(min(64 + 64 * vel, 127))
+
     def execute(self, cjson: json):
         right_stick = cjson["right_stick_y"]
         left_stick = cjson["left_stick_y"]
         right_trigger = cjson["right_trigger"]
         left_trigger = cjson["left_trigger"]
 
-        # this code is all paurticular to the roboclaw motordriver API,
-        # so it needs to be changed
-        """
-        # Differential driving
-        delta = perf_counter() - self.prev_time # seconds
+        self.drive(stick_l, stick_r)
 
-        target_wheels = differential_ik(left_stick, right_stick)
-        target_diff = ( min(target_wheels[0] - self.prev_wheels[0], delta * self.ramp)
-                      , min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp)
-                      )
-        self.rclaw_wheels.forward_backward_m1(
-            clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
-        )
-        self.rclaw_wheels.forward_backward_m2(
-            clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
-        )
-
-        ## power the wheels based on tank controls
-        # self.rclaw_wheels.forward_backward_m1(right_stick)
-        # self.rclaw_wheels.forward_backward_m2(left_stick)
-        
-        # Check if trigger state has changed because running commands over the 
-        # USB bus is expensive
-        if (right_trigger, left_trigger) != (self.prev_command["right_trigger"], self.prev_command["left_trigger"]):
-           rclaw_kick_target = min(64 + 64 * (left_trigger - right_trigger), 127)
-           self.rclaw_kick.forward_backward_m1(rclaw_kick_target)
-           self.rclaw_kick.forward_backward_m1(rclaw_kick_target)
-        """
+        if (right_trigger, left_trigger) != (
+            self.prev_command["right_trigger"],
+            self.prev_command["left_trigger"],
+        ):
+            self.spin(left_trigger - right_trigger)
 
         if self.prev_command == None:
             self.prev_command = cjson
@@ -148,22 +205,24 @@ class RobotController:
         print("Checking heartbeat...")
 
         if self.heartbeat_time > self.heart_attack_threshold:
-            print(f"Heartbeat not found after threshold time of {self.heart_attack_threshold} seconds, terminating...")
+            print(
+                f"Heartbeat not found after threshold time of {self.heart_attack_threshold} seconds, terminating..."
+            )
             self.motor_kill()
             self.dead = True
-        
+
         Timer(delta, self.heartbeat, args=(delta,)).start()
 
     # kill the robot
     def motor_kill(self):
-        print("robot is dead")
+        print("Robot is dead.")
         self.dead = True
         sys.exit()
 
 def main():
     host, port = "*", 5555
     r = RobotController(host, port)
-    print(f"Listening on {host}:{port}")
+    print(f"Listening on {host}:{port}.")
     r.listen()
 
 if __name__ == "__main__":
