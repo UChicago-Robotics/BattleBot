@@ -44,7 +44,7 @@ def differential_ik(x_vel: float, z_rot: float) -> Tuple[float, float]:
 class RobotController:
     # Explanation of VESC (i.e. the protocol our drivetrain motor controllers use) CAN bus messages
     # -----------------------------------------------------------------------
-    # 
+    #
     # Each CAN bus message has two parts (for our purposes):
     #
     # (1) An "arbitration ID" that uniquely identifies the type of message being sent (i.e. setting
@@ -55,7 +55,7 @@ class RobotController:
     # -------
     #
     # To set the duty cycle to 10% for controller 0,
-    # 
+    #
     # - The arbitration ID is: 0x00000000
     #                                  ^^ Controller ID 0 (up to 256 IDs available)
     #                            ^^^^^^   VESC message type (0x000000 corresponds to "set duty cycle")
@@ -65,7 +65,7 @@ class RobotController:
     #                                     0.1 * 100_000.
     CAN_ADDRESS = "can0"
     # How often the CAN bus is transmitting/receiving messages
-    CAN_BITRATE = 125000 # Hz
+    CAN_BITRATE = 125000  # Hz
 
     ZMQ_HOST = "*"
     ZMQ_PORT = 5555
@@ -87,7 +87,9 @@ class RobotController:
         print(f"Listening on {ZMQ_HOST}:{ZMQ_PORT}.")
 
         # Drivetrain CAN bus socket
-        self.can = can.Bus(bustype="socketcan", channel=CAN_ADDRESS, bitrate=CAN_BITRATE)
+        self.can = can.Bus(
+            bustype="socketcan", channel=CAN_ADDRESS, bitrate=CAN_BITRATE
+        )
 
         # Spinner roboclaw controller
         self.rclaw_spinner = Roboclaw(Serial("/dev/ttyS1", 38400))
@@ -100,8 +102,8 @@ class RobotController:
         # Last frame time
         self.prev_time = 0.0  # seconds
 
-        # check when most recent heartbeat packet was received, terminate if
-        # it has been more than 1 second without a packet
+        # Check when most recent heartbeat packet was received, terminate if
+        # it has been more than 1 second without a packet.
         self.heartbeat_time = 0.0  # time until last heartbeat
         self.heart_attack_threshold = 10.0  # latency after which robot will shut down
         self.heartbeat_delta = 0.5
@@ -224,6 +226,7 @@ class RobotController:
         print("Robot is dead.")
         self.dead = True
         sys.exit()
+
 
 if __name__ == "__main__":
     RobotController().listen()
