@@ -8,8 +8,6 @@ from time import sleep, perf_counter
 from math import copysign
 from typing import Tuple
 
-# from threading import Thread, Timer
-
 
 def clamp(mn, mx, n):
     return min(max(n, mn), mx)
