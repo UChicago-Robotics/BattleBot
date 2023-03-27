@@ -42,7 +42,7 @@ def differential_ik(x_vel: float, z_rot: float) -> Tuple[float, float]:
 
 
 class RobotController:
-    # Explanation of VESC (i.e. drivetrain motor controller) CAN bus messages
+    # Explanation of VESC (i.e. the protocol our drivetrain motor controllers use) CAN bus messages
     # -----------------------------------------------------------------------
     # 
     # Each CAN bus message has two parts (for our purposes):
@@ -67,6 +67,9 @@ class RobotController:
     # How often the CAN bus is transmitting/receiving messages
     CAN_BITRATE = 125000 # Hz
 
+    ZMQ_HOST = "*"
+    ZMQ_PORT = 5555
+
     CONTROLLER_ID_L = 0x00000000
     CONTROLLER_ID_R = 0x00000001
 
@@ -75,15 +78,18 @@ class RobotController:
     def duty_cycle_can(cycle: float) -> bytes:
         (cycle * 100000).to_bytes(4, byteorder="big")
 
-    def __init__(self, host, port):
+    def __init__(self):
         context = zmq.Context()
 
         self.socket = context.socket(zmq.REP)
-        self.socket.bind(f"tcp://{host}:{port}")
+        self.socket.bind(f"tcp://{ZMQ_HOST}:{ZMQ_PORT}")
 
-        # Drivetrain CAN bus sockets
+        print(f"Listening on {ZMQ_HOST}:{ZMQ_PORT}.")
+
+        # Drivetrain CAN bus socket
         self.can = can.Bus(bustype="socketcan", channel=CAN_ADDRESS, bitrate=CAN_BITRATE)
 
+        # Spinner roboclaw controller
         self.rclaw_spinner = Roboclaw(Serial("/dev/ttyS1", 38400))
 
         self.prev_command = None
@@ -219,11 +225,5 @@ class RobotController:
         self.dead = True
         sys.exit()
 
-def main():
-    host, port = "*", 5555
-    r = RobotController(host, port)
-    print(f"Listening on {host}:{port}.")
-    r.listen()
-
 if __name__ == "__main__":
-    main()
+    RobotController().listen()
