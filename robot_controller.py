@@ -8,7 +8,7 @@ from serial import Serial
 from time import sleep, perf_counter
 from math import copysign
 from typing import Tuple
-
+rpm
 
 def clamp(mn, mx, n):
     return min(max(n, mn), mx)
@@ -138,7 +138,7 @@ class RobotController:
             min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp),
         )
 
-        self.can_l.send(
+        self.can.send(
             can.Message(
                 arbitration_id=CONTROLLER_ID_L,
                 data=RobotController.duty_cycle_can(
@@ -147,7 +147,7 @@ class RobotController:
                 is_extended_id=True,
             )
         )
-        self.can_r.send(
+        self.can.send(
             can.Message(
                 arbitration_id=CONTROLLER_ID_R,
                 data=RobotController.duty_cycle_can(
