@@ -1,3 +1,4 @@
+import can
 import zmq
 import json
 import sys
@@ -74,7 +75,20 @@ class RobotController:
     # Construct a byte array containing a duty cycle payload for CAN transmission.
     @staticmethod
     def duty_cycle_can(cycle: float) -> bytes:
-        (cycle * 100000).to_bytes(4, byteorder="big")
+        int(cycle * 100000).to_bytes(4, byteorder="big")
+
+    # TODO Not tested. Not sure what current unit is.
+    # # Convert a STATUS_1 CAN message to a tuple of (rpm, current, and duty cycle)
+    # @staticmethod
+    # def status_1_can(data: bytes) -> Optional[Tuple[int, float, float]]:
+    #     if len(data) != 8:
+    #         return None
+
+    #     rpm = int.from_bytes(data[0:4], byteorder='big')
+    #     current = int.from_bytes(data[4:6], byteorder='big')
+    #     duty = int.from_bytes(data[6:8], byteorder='big')
+
+    #     return (rpm, float(current) / 10.0, float(duty) / 1000.0)
 
     def __init__(self):
         context = zmq.Context()
