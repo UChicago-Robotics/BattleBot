@@ -1,9 +1,7 @@
 import pygame as pg
 import traceback
 import math
-import json
 import zmq
-import time
 import json
 
 ip = "192.168.8.233"
@@ -14,13 +12,7 @@ socket = context.socket(zmq.REQ)
 socket.connect(f"tcp://{ip}:{port}")
 print(f"Connected to {ip} {port}")
 
-# checking the pygame version because they behave different
-version = pg.__version__
-PGVERSION = int(version.split('.')[0])
-
 offset_y = 64
-WIDTH = 812
-HEIGHT = 554 + offset_y
 
 vec = pg.math.Vector2
 
@@ -33,17 +25,6 @@ pg.joystick.init()
 
 deadzone_stick = 0.2
 deadzone_trigger = 0.01
-
-button_a_pos = (584, 201 + offset_y)
-button_b_pos = (637, 148 + offset_y)
-button_x_pos = (533, 149 + offset_y)
-button_y_pos = (585, 96 + offset_y)
-
-button_back_pos = (336, 159 + offset_y)
-button_start_pos = (451, 159 + offset_y)
-
-shoulder_l_pos = (123, 4 + offset_y)
-shoulder_r_pos = (510, 4 + offset_y)
 
 stick_l = vec(0, 0)
 stick_r = vec(0, 0)
@@ -116,21 +97,15 @@ try:
             draw_stick_l = vec(0, 0)
             draw_stick_l.x = stick_l.x * math.sqrt(1 - 0.5 * stick_l.y ** 2)
             draw_stick_l.y = -stick_l.y * math.sqrt(1 - 0.5 * stick_l.x ** 2)
-            if round(draw_stick_l.length(), 1) >= deadzone_stick:
-                vec_left = stick_l_center + draw_stick_l * stick_radius
-                stick_l = vec(0,0)
-            else:
-                vec_left = vec(stick_l_center)
+            # if round(draw_stick_l.length(), 1) >= deadzone_stick:
+            #     stick_l = vec(0,0)
 
             # right stick
             draw_stick_r = vec(0, 0)
             draw_stick_r.x = stick_r.x * math.sqrt(1 - 0.5 * stick_r.y ** 2)
             draw_stick_r.y = -stick_r.y * math.sqrt(1 - 0.5 * stick_r.x ** 2)
-            if round(draw_stick_r.length(), 1) >= deadzone_stick:
-                vec_right = stick_r_center + draw_stick_r * stick_radius
-                stick_r = vec(0,0)
-            else:
-                vec_right = vec(stick_r_center)
+            # if round(draw_stick_r.length(), 1) >= deadzone_stick:
+            #     stick_r = vec(0,0)
 
             controls = {
                 "invert_button": inverted,
