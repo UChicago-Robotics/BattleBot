@@ -9,7 +9,6 @@ from time import sleep, perf_counter
 from math import copysign
 from typing import Tuple
 from threading import Timer
-rpm
 
 def clamp(mn, mx, n):
     return min(max(n, mn), mx)
@@ -95,13 +94,13 @@ class RobotController:
         context = zmq.Context()
 
         self.socket = context.socket(zmq.REP)
-        self.socket.bind(f"tcp://{ZMQ_HOST}:{ZMQ_PORT}")
+        self.socket.bind(f"tcp://{self.ZMQ_HOST}:{self.ZMQ_PORT}")
 
-        print(f"Listening on {ZMQ_HOST}:{ZMQ_PORT}.")
+        print(f"Listening on {self.ZMQ_HOST}:{self.ZMQ_PORT}.")
 
         # Drivetrain CAN bus socket
         self.can = can.Bus(
-            bustype="socketcan", channel=CAN_ADDRESS, bitrate=CAN_BITRATE
+            bustype="socketcan", channel=self.CAN_ADDRESS, bitrate=self.CAN_BITRATE
         )
 
         # Spinner roboclaw controller
@@ -133,7 +132,7 @@ class RobotController:
     def drive(self, x_vel: float, z_rot: float):
         delta = perf_counter() - self.prev_time  # seconds
 
-        target_wheels = differential_ik(l, r)
+        target_wheels = differential_ik(x_vel, z_rot)
         target_diff = (
             min(target_wheels[0] - self.prev_wheels[0], delta * self.ramp),
             min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp),
@@ -141,7 +140,7 @@ class RobotController:
 
         self.can.send(
             can.Message(
-                arbitration_id=CONTROLLER_ID_L,
+                arbitration_id=self.CONTROLLER_ID_L,
                 data=RobotController.duty_cycle_can(
                     clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
                 ),
@@ -150,7 +149,7 @@ class RobotController:
         )
         self.can.send(
             can.Message(
-                arbitration_id=CONTROLLER_ID_R,
+                arbitration_id=self.CONTROLLER_ID_R,
                 data=RobotController.duty_cycle_can(
                     clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
                 ),
