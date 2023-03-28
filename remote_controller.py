@@ -90,12 +90,14 @@ class Button():
         self.onclickFunction = onclickFunction
         self.onePress = onePress
         self.buttonText = buttonText
+        self.toggle_on = False
 
         self.fillColors = {
-            'normal': '#800000',
-            'hover': '#F00000',
-            'pressed': 
-            '#333333',
+            'unpaused': '#0ad122',
+            'hover-currently_unpaused': '#2e9e33',
+            'hover-currently_paused': '#c22d34',
+            'paused': '#F00000',
+            'pressed': '#664e4e',
         }
         self.buttonSurface = pg.Surface((self.width, self.height))
         self.buttonRect = pg.Rect(self.x, self.y, self.width, self.height)
@@ -108,22 +110,33 @@ class Button():
 
     def process(self):
         mousePos = pg.mouse.get_pos()
-        self.buttonSurface.fill(self.fillColors['normal'])
+        if not self.toggle_on:
+            self.buttonSurface.fill(self.fillColors['unpaused'])
+        elif self.toggle_on:
+            self.buttonSurface.fill(self.fillColors['paused'])
+                        
         if self.buttonRect.collidepoint(mousePos):
-            self.buttonSurface.fill(self.fillColors['hover'])
+            if not self.toggle_on:
+                self.buttonSurface.fill(self.fillColors['hover-currently_unpaused'])
+            elif self.toggle_on:
+                self.buttonSurface.fill(self.fillColors['hover-currently_paused'])
+        
             if pg.mouse.get_pressed(num_buttons=3)[0]:
                 self.buttonSurface.fill(self.fillColors['pressed'])
                 if self.onePress:
                     self.onclickFunction()
                 elif not self.alreadyPressed:
                     self.onclickFunction()
-                    if self.buttonText == "Pause":
+                    if not self.toggle_on:
                         self.buttonText = "Unpause"
-                    elif self.buttonText == "Unpause":
+                        self.toggle_on = True
+                    elif self.toggle_on:
                         self.buttonText = "Pause"
+                        self.toggle_on = False
                     self.alreadyPressed = True
             else:
                 self.alreadyPressed = False
+
         self.buttonSurf = font.render(self.buttonText, True, (20, 20, 20))
         self.buttonSurface.blit(self.buttonSurf, [
                 self.buttonRect.width/2 - self.buttonSurf.get_rect().width/2,
