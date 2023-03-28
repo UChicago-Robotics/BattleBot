@@ -167,6 +167,7 @@ class RobotController:
         self.rclaw_spinner.forward_backward_m1(min(64 + 64 * vel, 127))
 
     def execute(self, cjson: json):
+        pause = cjson["pause"]
         right_stick = cjson["right_stick_y"]
         left_stick = cjson["left_stick_y"]
         right_trigger = cjson["right_trigger"]
@@ -196,6 +197,9 @@ class RobotController:
                 packet = self.socket.recv_string()
                 packet = packet.replace("\\", "").strip('"')
                 packet = json.loads(packet)
+
+                if packet["pause"]:
+                    self.motor_kill()
 
                 # start hearbeat protocol if this is our first packet
                 if not receiving_data:
@@ -236,9 +240,6 @@ class RobotController:
     # kill the robot
     def motor_kill(self):
         print("Robot is dead.")
-        self.dead = True
-        sys.exit()
-
 
 if __name__ == "__main__":
     RobotController().listen()

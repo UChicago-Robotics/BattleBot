@@ -26,7 +26,7 @@ vec = pg.math.Vector2
 
 # initialize pygame
 pg.init()
-#screen = pg.display.set_mode((WIDTH, HEIGHT))
+screen = pg.display.set_mode((WIDTH, HEIGHT))
 clock = pg.time.Clock()
 
 pg.joystick.init()
@@ -57,12 +57,90 @@ stick_size = 20
 trigger_r = 0
 trigger_l = 0
 
-
+color = (255,255,255)
+  
+# light shade of the button
+color_light = (170,170,170)
+  
+# dark shade of the button
+color_dark = (100,100,100)
+  
+# stores the width of the
+# screen into a variable
+width = screen.get_width()
+  
+# stores the height of the
+# screen into a variable
+height = screen.get_height()
+smallfont = pg.font.SysFont('Corbel',15)
+font = pg.font.SysFont('Arial', 40)
+pausetext = smallfont.render('Pause' , True , color)
+unpausetext = smallfont.render('Unpause' , True , color)
 # game loop
 running = True
+objects = []
+pause = False
+
+class Button():
+    def __init__(self, x, y, width, height, buttonText='Button', onclickFunction=None, onePress=False):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.onclickFunction = onclickFunction
+        self.onePress = onePress
+        self.buttonText = buttonText
+
+        self.fillColors = {
+            'normal': '#800000',
+            'hover': '#F00000',
+            'pressed': 
+            '#333333',
+        }
+        self.buttonSurface = pg.Surface((self.width, self.height))
+        self.buttonRect = pg.Rect(self.x, self.y, self.width, self.height)
+
+        self.buttonSurf = font.render(self.buttonText, True, (20, 20, 20))
+
+        self.alreadyPressed = False
+
+        objects.append(self)
+
+    def process(self):
+        mousePos = pg.mouse.get_pos()
+        self.buttonSurface.fill(self.fillColors['normal'])
+        if self.buttonRect.collidepoint(mousePos):
+            self.buttonSurface.fill(self.fillColors['hover'])
+            if pg.mouse.get_pressed(num_buttons=3)[0]:
+                self.buttonSurface.fill(self.fillColors['pressed'])
+                if self.onePress:
+                    self.onclickFunction()
+                elif not self.alreadyPressed:
+                    self.onclickFunction()
+                    if self.buttonText == "Pause":
+                        self.buttonText = "Unpause"
+                    elif self.buttonText == "Unpause":
+                        self.buttonText = "Pause"
+                    self.alreadyPressed = True
+            else:
+                self.alreadyPressed = False
+        self.buttonSurf = font.render(self.buttonText, True, (20, 20, 20))
+        self.buttonSurface.blit(self.buttonSurf, [
+                self.buttonRect.width/2 - self.buttonSurf.get_rect().width/2,
+                self.buttonRect.height/2 - self.buttonSurf.get_rect().height/2
+            ])
+        screen.blit(self.buttonSurface, self.buttonRect)
+
+def pauseclicked():
+    global pause
+    pause = not pause
+
+pausebutton = Button(30, 30, 400, 100, "Pause", pauseclicked)
+
 try:
     while running:
         clock.tick(60)
+        screen.fill((255, 255, 255))
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -122,21 +200,25 @@ try:
                 vec_right = vec(stick_r_center)
 
             controls = {
+                "pause": pause,
                 "left_stick_y": draw_stick_l.y,
                 "right_stick_y": draw_stick_r.y,
                 "left_trigger": trigger_l,
                 "right_trigger": trigger_r
             }
-
-            controls_json = json.dumps(controls)
+            #if listen:
+            '''controls_json = json.dumps(controls)
             socket.send_string(controls_json)
 
             message = socket.recv_string()
-            print(f"Server replied: {message}\n")
+            print(f"Server replied: {message}\n")'''
 
         else:
             text = "No Device plugged in."
-            print(text)
+            #print(text)
+        for object in objects:
+            object.process()
+        pg.display.update()
 
     pg.quit()
 except Exception:
