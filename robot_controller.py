@@ -118,8 +118,8 @@ class RobotController:
         # Check when most recent heartbeat packet was received, terminate if
         # it has been more than 1 second without a packet.
         self.heartbeat_time = 0.0  # time until last heartbeat
-        self.heart_attack_threshold = 10.0  # latency after which robot will shut down
-        self.heartbeat_delta = 0.5
+        self.heart_attack_threshold = 1.0  # latency after which robot will shut down
+        self.heartbeat_delta = 0.1
         self.dead = False
 
     # Command the drivetrain ESC duty cycle to the specified x velocity and z rotation.
@@ -165,7 +165,7 @@ class RobotController:
     # vel:
     #   velociy value from -1.0 to 1.0
     def spin(self, vel: float):
-        self.rclaw_spinner.forward_backward_m1(min(64 + 64 * vel, 127))
+        self.rclaw_spinner.forward_backward_m1(min(64 + 64*vel, 127))
 
     def execute(self, cjson: json):
         right_stick = cjson["right_stick_y"]
@@ -176,15 +176,17 @@ class RobotController:
 
         self.drive(inverted * left_stick, inverted * right_stick)
 
-        if (right_trigger, left_trigger) != (
-            self.prev_command["right_trigger"],
-            self.prev_command["left_trigger"],
-        ):
-            self.spin(inverted * (left_trigger - right_trigger))
 
         if self.prev_command == None:
             self.prev_command = cjson
 
+        if (right_trigger, left_trigger) != (
+                self.prev_command["right_trigger"],
+                self.prev_command["left_trigger"],
+        ):
+            self.spin(inverted * (left_trigger - right_trigger))
+
+        self.prev_command = cjson
         print(cjson)
 
     # main loo for robot controller
@@ -205,15 +207,12 @@ class RobotController:
                     receiving_data = True
 
                 # check for packet type
-                if packet["type"] == "heartbeat":
-                    self.heartbeat_time = 0.0
-                elif packet["type"] == "controller":
-                    controller_json = {
-                        k: int(v) for (k, v) in dict(packet["data"]).items()
-                    }
-                    self.execute(controller_json)
-                    self.socket.send_string(f"Done")
-                    self.heartbeat_time = 0.0
+                controller_json = {
+                    k: v for (k, v) in dict(packet).items()
+                }
+                self.execute(controller_json)
+                self.socket.send_string(f"Done")
+                self.heartbeat_time = 0.0
 
                 self.prev_time = perf_counter()
         except BaseException:
@@ -231,13 +230,14 @@ class RobotController:
                 f"Heartbeat not found after threshold time of {self.heart_attack_threshold} seconds, terminating..."
             )
             self.motor_kill()
-            self.dead = True
 
         Timer(delta, self.heartbeat, args=(delta,)).start()
 
     # kill the robot
     def motor_kill(self):
         print("Robot is dead.")
+        self.rclaw_spinner.forward_m1(0)
+        # TODO: KILL CAN MOTORS
         self.dead = True
         sys.exit()
 

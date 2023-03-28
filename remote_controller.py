@@ -6,7 +6,7 @@ import zmq
 import time
 import json
 
-ip = "10.150.71.206"
+ip = "192.168.8.233"
 port = 5555
 
 context = zmq.Context()
@@ -90,13 +90,13 @@ try:
                 elif i == 1 and abs(axis) > deadzone_stick:
                     # left stick up/down
                     stick_l.y = axis
-                elif i == 3 and abs(axis) > deadzone_stick:
+                elif i == 2 and abs(axis) > deadzone_stick:
                     # right stick left/right
                     stick_r.x = axis
-                elif i == 4 and abs(axis) > deadzone_stick:
+                elif i == 3 and abs(axis) > deadzone_stick:
                     # right stick up/down
                     stick_r.y = axis
-                elif i == 2 and axis > deadzone_trigger:
+                elif i == 4 and axis > deadzone_trigger:
                     # left trigger
                     trigger_l = 1
                 elif i == 5 and axis > deadzone_trigger:
