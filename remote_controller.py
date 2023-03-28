@@ -60,6 +60,7 @@ trigger_l = 0
 
 # game loop
 running = True
+inverted = False
 try:
     while running:
         clock.tick(60)
@@ -79,6 +80,8 @@ try:
             trigger_l = 0
 
             # get axes values
+            # https://www.pygame.org/docs/ref/joystick.html#pygame.joystick.Joystick
+            # current mappings are to Xbox360 controller
             for i in range(axes):
                 axis = gamepads[0].get_axis(i)
                 if i == 0 and abs(axis) > deadzone_stick:
@@ -87,18 +90,22 @@ try:
                 elif i == 1 and abs(axis) > deadzone_stick:
                     # left stick up/down
                     stick_l.y = axis
-                elif i == 2 and abs(axis) > deadzone_stick:
+                elif i == 3 and abs(axis) > deadzone_stick:
                     # right stick left/right
                     stick_r.x = axis
-                elif i == 3 and abs(axis) > deadzone_stick:
+                elif i == 4 and abs(axis) > deadzone_stick:
                     # right stick up/down
                     stick_r.y = axis
-                elif i == 4 and axis > deadzone_trigger:
+                elif i == 2 and axis > deadzone_trigger:
                     # left trigger
                     trigger_l = 1
                 elif i == 5 and axis > deadzone_trigger:
                     # right trigger
                     trigger_r = 1
+
+            # A button
+            if gamepads[0].get_button(0):
+                inverted = not inverted
 
             # draw analog sticks
             # left stick
@@ -122,6 +129,7 @@ try:
                 vec_right = vec(stick_r_center)
 
             controls = {
+                "invert_button": inverted,
                 "left_stick_y": draw_stick_l.y,
                 "right_stick_y": draw_stick_r.y,
                 "left_trigger": trigger_l,
