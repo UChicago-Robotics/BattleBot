@@ -97,15 +97,15 @@ try:
             draw_stick_l = vec(0, 0)
             draw_stick_l.x = stick_l.x * math.sqrt(1 - 0.5 * stick_l.y ** 2)
             draw_stick_l.y = -stick_l.y * math.sqrt(1 - 0.5 * stick_l.x ** 2)
-            # if round(draw_stick_l.length(), 1) >= deadzone_stick:
-            #     stick_l = vec(0,0)
+            if round(draw_stick_l.length(), 1) >= deadzone_stick:
+                stick_l = vec(0,0)
 
             # right stick
             draw_stick_r = vec(0, 0)
             draw_stick_r.x = stick_r.x * math.sqrt(1 - 0.5 * stick_r.y ** 2)
             draw_stick_r.y = -stick_r.y * math.sqrt(1 - 0.5 * stick_r.x ** 2)
-            # if round(draw_stick_r.length(), 1) >= deadzone_stick:
-            #     stick_r = vec(0,0)
+            if round(draw_stick_r.length(), 1) >= deadzone_stick:
+                stick_r = vec(0,0)
 
             controls = {
                 "invert_button": inverted,
