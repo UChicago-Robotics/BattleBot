@@ -173,7 +173,7 @@ class RobotController:
         left_trigger = cjson["left_trigger"]
         inverted = 1 if not cjson["invert_button"] else -1
 
-        self.drive(stick_l, stick_r)
+        self.drive(inverted * left_stick, inverted * right_stick)
 
         if (right_trigger, left_trigger) != (
             self.prev_command["right_trigger"],
