@@ -12,7 +12,7 @@ print(f"Attempting to connect to {ip}:{port}...")
 controls = {
     "type": "controller",
     "data": {
-        "invert_lever": False,
+        "invert_button": False,
         "left_stick_y": 0,
         "right_stick_y": 0,
         "left_trigger": 0,
