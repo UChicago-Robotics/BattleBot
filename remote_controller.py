@@ -61,6 +61,7 @@ trigger_l = 0
 # game loop
 running = True
 inverted = False
+invert_buffer = 0
 try:
     while running:
         clock.tick(60)
@@ -103,9 +104,12 @@ try:
                     # right trigger
                     trigger_r = 1
 
-            # A button
-            if gamepads[0].get_button(0):
+            # A button, prevent inversion from triggering for 10 iterations to prevent button spam input
+            if gamepads[0].get_button(0) and invert_buffer >= 10:
                 inverted = not inverted
+                invert_buffer = 0
+
+            invert_buffer = min(invert_buffer + 1, 10)
 
             # draw analog sticks
             # left stick
