@@ -100,9 +100,9 @@ class RobotController:
         print(f"Listening on {self.ZMQ_HOST}:{self.ZMQ_PORT}.")
 
         # Drivetrain CAN bus socket
-        self.can = can.Bus(
-            bustype="socketcan", channel=self.CAN_ADDRESS, bitrate=self.CAN_BITRATE
-        )
+        # self.can = can.Bus(
+        #     bustype="socketcan", channel=self.CAN_ADDRESS, bitrate=self.CAN_BITRATE
+        # )
 
         # Spinner roboclaw controller
         self.rclaw_spinner = Roboclaw(Serial("/dev/ttyS1", 38400))
@@ -139,24 +139,24 @@ class RobotController:
             min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp),
         )
 
-        self.can.send(
-            can.Message(
-                arbitration_id=self.CONTROLLER_ID_L,
-                data=RobotController.duty_cycle_can(
-                    clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
-                ),
-                is_extended_id=True,
-            )
-        )
-        self.can.send(
-            can.Message(
-                arbitration_id=self.CONTROLLER_ID_R,
-                data=RobotController.duty_cycle_can(
-                    clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
-                ),
-                is_extended_id=True,
-            )
-        )
+        # self.can.send(
+        #     can.Message(
+        #         arbitration_id=self.CONTROLLER_ID_L,
+        #         data=RobotController.duty_cycle_can(
+        #             clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
+        #         ),
+        #         is_extended_id=True,
+        #     )
+        # )
+        # self.can.send(
+        #     can.Message(
+        #         arbitration_id=self.CONTROLLER_ID_R,
+        #         data=RobotController.duty_cycle_can(
+        #             clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
+        #         ),
+        #         is_extended_id=True,
+        #     )
+        # )
 
     # Command the spinner
     #
