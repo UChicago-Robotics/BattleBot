@@ -3,6 +3,7 @@ import zmq
 import json
 import sys
 import traceback
+from roboclaw import Roboclaw
 
 from serial import Serial
 from time import sleep, perf_counter
