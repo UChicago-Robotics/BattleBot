@@ -80,6 +80,9 @@ unpausetext = smallfont.render('Unpause' , True , color)
 running = True
 objects = []
 pause = False
+black = (0, 0, 0)
+pausedtext = font.render('Robot is paused' , True , black)
+runningtext = font.render('Robot is running' , True , black)
 
 class Button():
     def __init__(self, x, y, width, height, buttonText='Button', onclickFunction=None, onePress=False):
@@ -231,6 +234,10 @@ try:
             #print(text)
         for object in objects:
             object.process()
+        if not pause:
+	        screen.blit(runningtext, (100, 150))
+        else:
+            screen.blit(pausedtext, (100, 150))
         pg.display.update()
 
     pg.quit()
