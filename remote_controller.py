@@ -80,28 +80,40 @@ unpausetext = smallfont.render('Unpause' , True , color)
 running = True
 objects = []
 pause = False
+reboot = False
 black = (0, 0, 0)
 pausedtext = font.render('Robot is paused' , True , black)
 runningtext = font.render('Robot is running' , True , black)
 
 class Button():
-    def __init__(self, x, y, width, height, buttonText='Button', onclickFunction=None, onePress=False):
+    def __init__(self, x, y, width, height, buttonText1='Pause', buttonText2="Unpause", onclickFunction=None, onePress=False, type="Pause"):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.onclickFunction = onclickFunction
         self.onePress = onePress
-        self.buttonText = buttonText
+        self.buttonText = buttonText1
+        self.buttonText1 = buttonText1
+        self.buttonText2 = buttonText2
         self.toggle_on = False
-
-        self.fillColors = {
-            'unpaused': '#0ad122',
-            'hover-currently_unpaused': '#2e9e33',
-            'hover-currently_paused': '#c22d34',
-            'paused': '#F00000',
-            'pressed': '#664e4e',
-        }
+        self.fillColors = {}
+        if type == "Pause":
+            self.fillColors = {
+                'unpaused': '#0ad122',
+                'hover-currently_unpaused': '#2e9e33',
+                'hover-currently_paused': '#c22d34',
+                'paused': '#F00000',
+                'pressed': '#664e4e',
+            }
+        elif type == "Reboot":
+            self.fillColors = {
+                'unpaused': '#F00000',
+                'hover-currently_unpaused': '#c22d34',
+                'hover-currently_paused': '#c22d34',
+                'paused': '#F00000',
+                'pressed': '#800000',
+            }
         self.buttonSurface = pg.Surface((self.width, self.height))
         self.buttonRect = pg.Rect(self.x, self.y, self.width, self.height)
 
@@ -131,10 +143,10 @@ class Button():
                 elif not self.alreadyPressed:
                     self.onclickFunction()
                     if not self.toggle_on:
-                        self.buttonText = "Unpause"
+                        self.buttonText = self.buttonText2
                         self.toggle_on = True
                     elif self.toggle_on:
-                        self.buttonText = "Pause"
+                        self.buttonText = self.buttonText1
                         self.toggle_on = False
                     self.alreadyPressed = True
             else:
@@ -151,7 +163,12 @@ def pauseclicked():
     global pause
     pause = not pause
 
-pausebutton = Button(30, 30, 400, 100, "Pause", pauseclicked)
+def rebootclicked():
+    global reboot
+    reboot = True
+
+pausebutton = Button(30, 30, 400, 100, "Pause", "Unpause", pauseclicked, False, "Pause")
+rebootbutton = Button(30, 300, 400, 100, "Reboot", "Reboot", rebootclicked, False, "Reboot")
 
 try:
     while running:
@@ -216,13 +233,15 @@ try:
                 vec_right = vec(stick_r_center)
 
             controls = {
+                "reboot": reboot,
                 "pause": pause,
                 "left_stick_y": draw_stick_l.y,
                 "right_stick_y": draw_stick_r.y,
                 "left_trigger": trigger_l,
                 "right_trigger": trigger_r
             }
-            #if listen:
+            if reboot:
+                reboot = False
             controls_json = json.dumps(controls)
             socket.send_string(controls_json)
 
