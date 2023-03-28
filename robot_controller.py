@@ -8,6 +8,7 @@ from serial import Serial
 from time import sleep, perf_counter
 from math import copysign
 from typing import Tuple
+from threading import Timer
 rpm
 
 def clamp(mn, mx, n):
