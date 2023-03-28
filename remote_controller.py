@@ -223,11 +223,11 @@ try:
                 "right_trigger": trigger_r
             }
             #if listen:
-            '''controls_json = json.dumps(controls)
+            controls_json = json.dumps(controls)
             socket.send_string(controls_json)
 
             message = socket.recv_string()
-            print(f"Server replied: {message}\n")'''
+            print(f"Server replied: {message}\n")
 
         else:
             text = "No Device plugged in."
@@ -235,7 +235,7 @@ try:
         for object in objects:
             object.process()
         if not pause:
-	        screen.blit(runningtext, (100, 150))
+            screen.blit(runningtext, (100, 150))
         else:
             screen.blit(pausedtext, (100, 150))
         pg.display.update()
