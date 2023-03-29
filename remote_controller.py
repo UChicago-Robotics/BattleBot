@@ -69,20 +69,19 @@ font = pg.font.SysFont(None, 24)
 running = True
 inverted = False
 invert_buffer = 0
+paused = False
 try:
     while running:
+        screen.fill((255, 255, 255))
         clock.tick(60)
-
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                running = False
 
         # detect gamepad
         gamepads = [pg.joystick.Joystick(x) for x in range(
             pg.joystick.get_count())]
-        if len(gamepads) > 0:
-            gamepads[0].init()
-            axes = gamepads[0].get_numaxes()
+        if not paused:
+        # if len(gamepads) > 0 and not paused:
+        #     gamepads[0].init()
+        #     axes = gamepads[0].get_numaxes()
 
             trigger_r = 0
             trigger_l = 0
@@ -90,31 +89,31 @@ try:
             # get axes values
             # https://www.pygame.org/docs/ref/joystick.html#pygame.joystick.Joystick
             # current mappings are to Xbox360 controller
-            for i in range(axes):
-                axis = gamepads[0].get_axis(i)
-                if i == 0 and abs(axis) > deadzone_stick:
-                    # left stick left/right
-                    stick_l.x = axis
-                elif i == 1 and abs(axis) > deadzone_stick:
-                    # left stick up/down
-                    stick_l.y = axis
-                elif i == 2 and abs(axis) > deadzone_stick:
-                    # right stick left/right
-                    stick_r.x = axis
-                elif i == 3 and abs(axis) > deadzone_stick:
-                    # right stick up/down
-                    stick_r.y = axis
-                elif i == 4 and axis > deadzone_trigger:
-                    # left trigger
-                    trigger_l = 1
-                elif i == 5 and axis > deadzone_trigger:
-                    # right trigger
-                    trigger_r = 1
-
-            # A button, prevent inversion from triggering for 10 iterations to prevent button spam input
-            if gamepads[0].get_button(0) and invert_buffer >= 10:
-                inverted = not inverted
-                invert_buffer = 0
+            # for i in range(axes):
+            #     axis = gamepads[0].get_axis(i)
+            #     if i == 0 and abs(axis) > deadzone_stick:
+            #         # left stick left/right
+            #         stick_l.x = axis
+            #     elif i == 1 and abs(axis) > deadzone_stick:
+            #         # left stick up/down
+            #         stick_l.y = axis
+            #     elif i == 2 and abs(axis) > deadzone_stick:
+            #         # right stick left/right
+            #         stick_r.x = axis
+            #     elif i == 3 and abs(axis) > deadzone_stick:
+            #         # right stick up/down
+            #         stick_r.y = axis
+            #     elif i == 4 and axis > deadzone_trigger:
+            #         # left trigger
+            #         trigger_l = 1
+            #     elif i == 5 and axis > deadzone_trigger:
+            #         # right trigger
+            #         trigger_r = 1
+            #
+            # # A button, prevent inversion from triggering for 10 iterations to prevent button spam input
+            # if gamepads[0].get_button(0) and invert_buffer >= 10:
+            #     inverted = not inverted
+            #     invert_buffer = 0
 
             invert_buffer = min(invert_buffer + 1, 10)
 
@@ -134,6 +133,7 @@ try:
                 stick_r = vec(0,0)
 
             controls = {
+                "type": "control",
                 "invert_button": inverted,
                 "left_stick_y": draw_stick_l.y,
                 "right_stick_y": draw_stick_r.y,
@@ -150,24 +150,49 @@ try:
             response_json = {
                 k: v for (k, v) in dict(packet).items()
             }
+            response_json["battery"] = 12
             right_stick_gui = response_json["right_stick_y"]
             left_stick_gui = response_json["left_stick_y"]
             right_trigger_gui = response_json["right_trigger"]
             left_trigger_gui = response_json["left_trigger"]
             inverted_gui = response_json["invert_button"]
+            battery_gui = response_json["battery"]
 
-            screen.fill((255, 255, 255))
-            pg.draw.rect(screen, color_dark, [width / 2, height / 2, 140, 40])
             screen.blit(font.render(str(inverted_gui), True, BLACK), (20, 20))
             screen.blit(font.render(str(right_stick_gui), True, BLACK), (20, 40))
             screen.blit(font.render(str(left_stick_gui), True, BLACK), (20, 60))
             screen.blit(font.render(str(right_trigger_gui), True, BLACK), (20, 80))
             screen.blit(font.render(str(left_trigger_gui), True, BLACK), (20, 100))
-
-            pg.display.update()
+            screen.blit(font.render(str(battery_gui), True, BLACK), (100, 20))
+        elif paused:
+            packet = {"type":"pause"}
+            print("paused")
+            #socket.send_string(json.dumps(packet))
         else:
             text = "No Device plugged in."
             print(text)
+
+
+        mouse = pg.mouse.get_pos()
+        for event in pg.event.get():
+            # print(event)
+            if event.type == pg.QUIT:
+                running = False
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                if width/2 <= mouse[0] <= width/2+140 and height/2 <= mouse[1] <= height/2+40:
+                    paused = not paused
+            # elif event.type == pg.KEYDOWN:
+            #     if event.key == pg.K_p:
+            #         paused = not paused
+            #     elif event.key == pg.K_q:
+            #         pg.quit()
+
+
+        screen.blit(font.render("PAUSED" if paused else "RUNNING", True, GREEN if not paused else RED), (20, 120))
+        pg.draw.rect(screen, GREEN if not paused else RED, [width / 2, height / 2, 140, 40])
+        if width/2 <= mouse[0] <= width/2+140 and height/2 <= mouse[1] <= height/2+40:
+            pg.draw.rect(screen, color_light, [width/2, height/2, 140, 40])
+        pg.display.update()
 
     pg.quit()
 except Exception:
