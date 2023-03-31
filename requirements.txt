@@ -2,3 +2,4 @@ pyserial
 pygame
 pyzmq
 python-can
+Odroid.GPIO
