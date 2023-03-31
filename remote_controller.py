@@ -162,15 +162,15 @@ try:
             controls_json = json.dumps(controls)
 
             ### UNCOMMENT THE NEXT THREE LINES FOR ACTUAL USE
-            # socket.send_string(controls_json)
-            # response = socket.recv_string()
-            # packet = response.replace("\\", "").strip('"')
+            socket.send_string(controls_json)
+            response = socket.recv_string()
+            packet = response.replace("\\", "").strip('"')
 
-            packet = json.loads(controls_json) ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
+            # packet = json.loads(controls_json) ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
             response_json = {
                 k: v for (k, v) in dict(packet).items()
             }
-            response_json["battery"] = 4 ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
+            # response_json["battery"] = 4 ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
             right_stick_gui = response_json["right_stick_y"]
             left_stick_gui = response_json["left_stick_y"]
             right_trigger_gui = response_json["right_trigger"]
@@ -252,7 +252,7 @@ try:
             packet = {"type":"pause"}
             print("paused")
             ### UNCOMMENT THIS LINE FOR ACTUAL USE
-            # socket.send_string(json.dumps(packet))
+            socket.send_string(json.dumps(packet))
         else:
             text = "No Controller Detected"
             screen.blit(font.render(text, True, RED), (20, 140))
