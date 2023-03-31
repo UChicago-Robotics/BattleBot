@@ -11,6 +11,8 @@ from math import copysign
 from typing import Tuple
 from threading import Timer
 
+import odroid_wiringpi as wiringpi
+
 def clamp(mn, mx, n):
     return min(max(n, mn), mx)
 
@@ -73,6 +75,8 @@ class RobotController:
     CONTROLLER_ID_L = 0x00000000
     CONTROLLER_ID_R = 0x00000001
 
+    ESTOP_GPIO = 7
+
     # Construct a byte array containing a duty cycle payload for CAN transmission.
     @staticmethod
     def duty_cycle_can(cycle: float) -> bytes:
@@ -100,12 +104,15 @@ class RobotController:
         print(f"Listening on {self.ZMQ_HOST}:{self.ZMQ_PORT}.")
 
         # Drivetrain CAN bus socket
-        # self.can = can.Bus(
-        #     bustype="socketcan", channel=self.CAN_ADDRESS, bitrate=self.CAN_BITRATE
-        # )
+        self.can = can.Bus(
+            bustype="socketcan", channel=self.CAN_ADDRESS, bitrate=self.CAN_BITRATE
+        )
 
         # Spinner roboclaw controller
         self.rclaw_spinner = Roboclaw(Serial("/dev/ttyS1", 38400))
+
+        # set estop GPIO to high
+        wiringpi.digitalWrite(self.ESTOP_GPIO, 1)
 
         self.prev_command = None
         # Prev wheels speed
@@ -139,24 +146,24 @@ class RobotController:
             min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp),
         )
 
-        # self.can.send(
-        #     can.Message(
-        #         arbitration_id=self.CONTROLLER_ID_L,
-        #         data=RobotController.duty_cycle_can(
-        #             clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
-        #         ),
-        #         is_extended_id=True,
-        #     )
-        # )
-        # self.can.send(
-        #     can.Message(
-        #         arbitration_id=self.CONTROLLER_ID_R,
-        #         data=RobotController.duty_cycle_can(
-        #             clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
-        #         ),
-        #         is_extended_id=True,
-        #     )
-        # )
+        self.can.send(
+            can.Message(
+                arbitration_id=self.CONTROLLER_ID_L,
+                data=RobotController.duty_cycle_can(
+                    clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
+                ),
+                is_extended_id=True,
+            )
+        )
+        self.can.send(
+            can.Message(
+                arbitration_id=self.CONTROLLER_ID_R,
+                data=RobotController.duty_cycle_can(
+                    clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
+                ),
+                is_extended_id=True,
+            )
+        )
 
     # Command the spinner
     #
@@ -165,7 +172,7 @@ class RobotController:
     # vel:
     #   velociy value from -1.0 to 1.0
     def spin(self, vel: float):
-        self.rclaw_spinner.forward_backward_m1(min(64 + 64*vel, 127))
+        self.rclaw_spinner.forward_backward_m1(min(64 + 64 * vel, 127))
 
     def execute(self, cjson: json):
         right_stick = cjson["right_stick_y"]
@@ -181,8 +188,8 @@ class RobotController:
             self.prev_command = cjson
 
         if (right_trigger, left_trigger) != (
-                self.prev_command["right_trigger"],
-                self.prev_command["left_trigger"],
+            self.prev_command["right_trigger"],
+            self.prev_command["left_trigger"],
         ):
             self.spin(inverted * (left_trigger - right_trigger))
 
@@ -240,12 +247,32 @@ class RobotController:
 
     # kill the robot
     def motor_kill(self):
-        print("Robot is dead.")
+        # disable spinner + write low to estop
         self.rclaw_spinner.forward_m1(0)
-        # TODO: KILL CAN MOTORS
+        wiringpi.digitalWrite(self.ESTOP_GPIO, 0)
+
+        # kill CAN motors
+        self.can.send(
+            can.Message(
+                arbitration_id=self.CONTROLLER_ID_L,
+                data=RobotController.duty_cycle_can(0x0000),
+                is_extended_id=True,
+            )
+        )
+
+        self.can.send(
+            can.Message(
+                arbitration_id=self.CONTROLLER_ID_R,
+                data=RobotController.duty_cycle_can(0x0000),
+                is_extended_id=True,
+            )
+        )
+
+        print("Robot is dead")
         self.dead = True
         sys.exit()
 
 
 if __name__ == "__main__":
+    wiringpi.wiringPiSetupGpio()
     RobotController().listen()
