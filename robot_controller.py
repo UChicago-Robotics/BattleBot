@@ -11,7 +11,7 @@ from math import copysign
 from typing import Tuple
 from threading import Timer
 
-import odroid_wiringpi as wiringpi
+# import odroid_wiringpi as wiringpi
 
 def clamp(mn, mx, n):
     return min(max(n, mn), mx)
@@ -112,7 +112,7 @@ class RobotController:
         self.rclaw_spinner = Roboclaw(Serial("/dev/ttyS1", 38400))
 
         # set estop GPIO to high
-        wiringpi.digitalWrite(self.ESTOP_GPIO, 1)
+        # wiringpi.digitalWrite(self.ESTOP_GPIO, 1)
 
         self.prev_command = None
         # Prev wheels speed
@@ -249,7 +249,7 @@ class RobotController:
     def motor_kill(self):
         # disable spinner + write low to estop
         self.rclaw_spinner.forward_m1(0)
-        wiringpi.digitalWrite(self.ESTOP_GPIO, 0)
+        # wiringpi.digitalWrite(self.ESTOP_GPIO, 0)
 
         # kill CAN motors
         self.can.send(
@@ -274,5 +274,5 @@ class RobotController:
 
 
 if __name__ == "__main__":
-    wiringpi.wiringPiSetupGpio()
+    # wiringpi.wiringPiSetupGpio()
     RobotController().listen()
