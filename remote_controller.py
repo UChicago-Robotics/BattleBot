@@ -83,6 +83,16 @@ try:
 
         clock.tick(60)
 
+        mouse = pg.mouse.get_pos()
+        trigger_r = 0
+        trigger_l = 0
+
+        keys = pg.key.get_pressed()
+        if keys[pg.K_RETURN]:
+            trigger_l = 1
+        if keys[pg.K_RSHIFT]:
+            trigger_r = 1
+
         # detect gamepad
         gamepads = [pg.joystick.Joystick(x) for x in range(
             pg.joystick.get_count())]
@@ -91,8 +101,8 @@ try:
             gamepads[0].init()
             axes = gamepads[0].get_numaxes()
 
-            trigger_r = 0
-            trigger_l = 0
+            # trigger_r = 0
+            # trigger_l = 0
 
             # get axes values
             # https://www.pygame.org/docs/ref/joystick.html#pygame.joystick.Joystick
@@ -111,12 +121,12 @@ try:
                 elif i == 3 and abs(axis) > deadzone_stick:
                     # right stick up/down
                     stick_r.y = axis
-                elif i == 4 and axis > deadzone_trigger:
-                    # left trigger
-                    trigger_l = 1
-                elif i == 5 and axis > deadzone_trigger:
-                    # right trigger
-                    trigger_r = 1
+                # elif i == 4 and axis > deadzone_trigger:
+                #     # left trigger
+                #     trigger_l = 1
+                # elif i == 5 and axis > deadzone_trigger:
+                #     # right trigger
+                #     trigger_r = 1
 
             # A button, prevent inversion from triggering for 10 iterations to prevent button spam input
             if gamepads[0].get_button(0) and invert_buffer >= 10:
@@ -248,7 +258,6 @@ try:
             screen.blit(font.render(text, True, RED), (20, 140))
             print(text)
 
-        mouse = pg.mouse.get_pos()
         for event in pg.event.get():
             # print(event)
             if event.type == pg.QUIT:
@@ -258,11 +267,11 @@ try:
                     paused = not paused
                 elif width - 291 <= mouse[0] <= width - 20 and 20 <= mouse[1] <= 20 + 100:
                     running = False
-            # elif event.type == pg.KEYDOWN:
-            #     if event.key == pg.K_p:
-            #         paused = not paused
-            #     elif event.key == pg.K_q:
-            #         pg.quit()
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_p:
+                    paused = not paused
+                elif event.key == pg.K_SPACE:
+                    running = False
 
         # kill button
         pg.draw.rect(screen, RED, [width - 291, 20, 273, 100])
