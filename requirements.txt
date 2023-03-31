@@ -2,4 +2,4 @@ pyserial
 pygame
 pyzmq
 python-can
-Odroid.GPIO
+odroid_wiringpi
