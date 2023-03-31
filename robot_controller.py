@@ -81,7 +81,8 @@ class RobotController:
     # Construct a byte array containing a duty cycle payload for CAN transmission.
     @staticmethod
     def duty_cycle_can(cycle: float) -> bytes:
-        int(abs(cycle) * 100000).to_bytes(4, byteorder="big")
+        # convert to negative if cycle is
+        int(cycle * 100000).to_bytes(4, byteorder="big", signed=True)
 
     # TODO Not tested. Not sure what current unit is.
     # # Convert a STATUS_1 CAN message to a tuple of (rpm, current, and duty cycle)
