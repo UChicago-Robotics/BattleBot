@@ -216,7 +216,7 @@ class RobotController:
                 #self.socket.send_string(f"Done")
 
                 controller_json["battery"] = self.rclaw_spinner.read_main_battery_voltage()
-                self.scoket_send_string(json.dumps(controller_json))
+                self.socket.send_string(json.dumps(controller_json))
                 self.heartbeat_time = 0.0
 
                 self.prev_time = perf_counter()
