@@ -77,11 +77,6 @@ class RobotController:
 
     ESTOP_GPIO = 7
 
-    # Construct a byte array containing a duty cycle payload for CAN transmission.
-    @staticmethod
-    def duty_cycle_can(cycle: float) -> bytes:
-        int(cycle * 100000).to_bytes(4, byteorder="big")
-
     # TODO Not tested. Not sure what current unit is.
     # # Convert a STATUS_1 CAN message to a tuple of (rpm, current, and duty cycle)
     # @staticmethod
@@ -98,8 +93,9 @@ class RobotController:
     def __init__(self):
         context = zmq.Context()
 
-        self.socket = context.socket(zmq.REP)
-        self.socket.bind(f"tcp://{self.ZMQ_HOST}:{self.ZMQ_PORT}")
+        self.socket = context.socket(zmq.DEALER)
+        self.socket.setsockopt(zmq.IDENTITY, b'A')
+        self.socket.connect(f"tcp://{self.ZMQ_HOST}:{self.ZMQ_PORT}")
 
         print(f"Listening on {self.ZMQ_HOST}:{self.ZMQ_PORT}.")
 
@@ -125,7 +121,7 @@ class RobotController:
         # Check when most recent heartbeat packet was received, terminate if
         # it has been more than 1 second without a packet.
         self.heartbeat_time = 0.0  # time until last heartbeat
-        self.heart_attack_threshold = 1.0  # latency after which robot will shut down
+        self.heart_attack_threshold = 4.0  # latency after which robot will shut down
         self.heartbeat_delta = 0.1
         self.dead = False
 
@@ -146,24 +142,25 @@ class RobotController:
             min(target_wheels[1] - self.prev_wheels[1], delta * self.ramp),
         )
 
-        self.can.send(
-            can.Message(
-                arbitration_id=self.CONTROLLER_ID_L,
-                data=RobotController.duty_cycle_can(
-                    clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0])
-                ),
-                is_extended_id=True,
+        l_can = (-int(clamp(-1.0, 1.0, self.prev_wheels[0] + target_diff[0]) * 100000)).to_bytes(4, byteorder="big", signed=True)
+        r_can = int(clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1]) * 100000).to_bytes(4, byteorder="big", signed=True)
+        #print(l_can, r_can, int.from_bytes(l_can, byteorder="big", signed=True), int.from_bytes(r_can, byteorder="big", signed=True))
+
+        if l_can is not None and r_can is not None:
+            self.can.send(
+                can.Message(
+                    arbitration_id=self.CONTROLLER_ID_L,
+                    data=l_can,
+                    is_extended_id=True,
+                )
             )
-        )
-        self.can.send(
-            can.Message(
-                arbitration_id=self.CONTROLLER_ID_R,
-                data=RobotController.duty_cycle_can(
-                    clamp(-1.0, 1.0, self.prev_wheels[1] + target_diff[1])
-                ),
-                is_extended_id=True,
+            self.can.send(
+                can.Message(
+                    arbitration_id=self.CONTROLLER_ID_R,
+                    data=r_can,
+                    is_extended_id=True,
+                )
             )
-        )
 
     # Command the spinner
     #
@@ -204,7 +201,7 @@ class RobotController:
         try:
             while not self.dead:
                 # load control packets into json object
-                packet = self.socket.recv_string()
+                packet = self.socket.recv_multipart()[0].decode()
                 packet = packet.replace("\\", "").strip('"')
                 packet = json.loads(packet)
 
@@ -222,8 +219,8 @@ class RobotController:
                     self.execute(controller_json)
                 #self.socket.send_string(f"Done")
 
-                controller_json["battery"] = self.rclaw_spinner.read_main_battery_voltage()
-                self.socket.send_string(json.dumps(controller_json))
+                # controller_json["battery"] = self.rclaw_spinner.read_main_battery_voltage()
+                # self.socket.send_string(json.dumps(controller_json))
                 self.heartbeat_time = 0.0
 
                 self.prev_time = perf_counter()
@@ -255,7 +252,7 @@ class RobotController:
         self.can.send(
             can.Message(
                 arbitration_id=self.CONTROLLER_ID_L,
-                data=RobotController.duty_cycle_can(0x0000),
+                data=0x00000000,
                 is_extended_id=True,
             )
         )
@@ -263,7 +260,7 @@ class RobotController:
         self.can.send(
             can.Message(
                 arbitration_id=self.CONTROLLER_ID_R,
-                data=RobotController.duty_cycle_can(0x0000),
+                data=0x00000000,
                 is_extended_id=True,
             )
         )

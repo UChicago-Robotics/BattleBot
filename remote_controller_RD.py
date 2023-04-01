@@ -3,13 +3,18 @@ import traceback
 import math
 import zmq
 import json
+import time
+from threading import Thread
 
 ip = "192.168.8.1"
 port = 5555
 
 context = zmq.Context()
 socket = context.socket(zmq.ROUTER)
-socket.bind(f"tcp://{ip}:{port}")
+# TESTING SOCKET
+socket.bind('tcp://127.0.0.1:5559')
+
+# socket.connect(f"tcp://{ip}:{port}")
 print(f"Connected to {ip} {port}")
 
 offset_y = 64
@@ -69,6 +74,26 @@ logo = pg.image.load("assets/logo.png")
 logo = pg.transform.scale(logo, (120, 120))
 name = pg.image.load("assets/name.png")
 name = pg.transform.scale(name, (340, 100))
+
+# TESTING SOCKET
+def worker_thread():
+    cxt = zmq.Context.instance()
+    worker = cxt.socket(zmq.DEALER)
+    worker.setsockopt(zmq.IDENTITY, b'A')
+    worker.connect("tcp://127.0.0.1:5559")
+
+    while True:
+        request = worker.recv_multipart()
+        response = request[0].decode()
+        packet = response.replace("\\", "").strip('"')
+        packet = json.loads(packet)
+        response_json = {
+            k: v for (k, v) in dict(packet).items()
+        }
+        print(response_json)
+
+Thread(target=worker_thread).start()
+time.sleep(2)
 
 # game loop
 running = True
@@ -164,16 +189,15 @@ try:
             controls_json = json.dumps(controls)
 
             ### UNCOMMENT THE NEXT THREE LINES FOR ACTUAL USE
-            # socket.send_string(controls_json)
+            socket.send_multipart([b'A', bytes(controls_json, 'utf-8')])
             # response = socket.recv_string()
             # packet = response.replace("\\", "").strip('"')
 
-            socket.send_multipart([b'A', bytes(controls_json, 'utf-8')])
             packet = json.loads(controls_json) ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
             response_json = {
                 k: v for (k, v) in dict(packet).items()
             }
-            response_json["battery"] = 24 ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
+            response_json["battery"] = 4 ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
             right_stick_gui = response_json["right_stick_y"]
             left_stick_gui = response_json["left_stick_y"]
             right_trigger_gui = response_json["right_trigger"]
@@ -257,7 +281,6 @@ try:
             print("paused")
             ### UNCOMMENT THIS LINE FOR ACTUAL USE
             # socket.send_string(json.dumps(packet))
-            socket.send_multipart([b'A', bytes(json.dumps(packet), 'utf-8')])
         else:
             text = "No Controller Detected"
             screen.blit(font.render(text, True, RED), (24, 140))
