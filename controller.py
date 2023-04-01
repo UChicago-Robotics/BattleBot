@@ -28,18 +28,13 @@ class Watchdog:
     # Update the watchdog to keep it alive.
     def notify(self):
         with self.lock:
-            curr_time = perf_counter()
-            delta = curr_time - self.prev_check
-            self.prev_check = curr_time
+            self.prev_check = perf_counter()
 
     # Check if the watchdog is alive.
     @property
     def alive(self) -> bool:
         with self.lock:
-            curr_time = perf_counter()
-            delta = curr_time - self.prev_check
-
-            return delta < self.expires
+            return perf_counter() - self.prev_check < self.expires
 
 class Spinner:
     def __init__(self, uart_address: str = "/dev/ttyS1", uart_baud: int = 38400):
