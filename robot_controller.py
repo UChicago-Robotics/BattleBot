@@ -13,7 +13,6 @@ from threading import Timer
 
 # import odroid_wiringpi as wiringpi
 
-
 def clamp(mn, mx, n):
     return min(max(n, mn), mx)
 
@@ -70,7 +69,6 @@ class RobotController:
     # How often the CAN bus is transmitting/receiving messages
     CAN_BITRATE = 125000  # Hz
 
-    ZMQ_HOST = "*"
     ZMQ_PORT = 5555
 
     CONTROLLER_ID_L = 0x00000000
@@ -91,13 +89,16 @@ class RobotController:
 
     #     return (rpm, float(current) / 10.0, float(duty) / 1000.0)
 
-    def __init__(self):
+    def __init__(self, remote_ip: str):
+        self.ZMQ_HOST = remote_ip
+
         context = zmq.Context()
 
-        self.socket = context.socket(zmq.REP)
-        self.socket.bind(f"tcp://{self.ZMQ_HOST}:{self.ZMQ_PORT}")
+        self.socket = context.socket(zmq.SUB)
+        self.socket.connect(f"tcp://{self.ZMQ_HOST}:{self.ZMQ_PORT}")
+        self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
-        print(f"Listening on {self.ZMQ_HOST}:{self.ZMQ_PORT}.")
+        print(f"Binding to {self.ZMQ_HOST}:{self.ZMQ_PORT}.")
 
         # Drivetrain CAN bus socket
         self.can = can.Bus(
@@ -203,10 +204,10 @@ class RobotController:
             while not self.dead:
                 # load control packets into json object
                 try:
-                    packet = self.socket.recv_string(flags=zmq.NOBLOCK)
+                    packet = self.socket.recv_string()
                     packet = packet.replace("\\", "").strip('"')
                     packet = json.loads(packet)
-                    # print(packet)
+                    print(packet)
 
                     # start hearbeat protocol if this is our first packet
                     if not receiving_data:
@@ -216,7 +217,6 @@ class RobotController:
                     # check for packet type
                     controller_json = {k: v for (k, v) in dict(packet).items()}
                     self.execute(controller_json)
-                    self.socket.send_string(f"Done")
                     self.heartbeat_time = 0.0
 
                     self.prev_time = perf_counter()
@@ -271,4 +271,7 @@ class RobotController:
 
 if __name__ == "__main__":
     #wiringpi.wiringPiSetupGpio()
-    RobotController().listen()
+    if len(sys.argv) < 2:
+        print("Robot requires ip addr of controller")
+
+    RobotController(sys.argv[1]).listen()
