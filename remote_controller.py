@@ -8,9 +8,8 @@ ip = "192.168.8.2"
 port = 5555
 
 context = zmq.Context()
-socket = context.socket(zmq.REQ)
+socket = context.socket(zmq.PUSH)
 socket.connect(f"tcp://{ip}:{port}")
-print(f"Connected to {ip} {port}")
 
 offset_y = 64
 
@@ -118,8 +117,8 @@ try:
             controls_json = json.dumps(controls)
             socket.send_string(controls_json)
 
-            message = socket.recv_string()
-            print(f"Server replied: {message}\n")
+            #message = socket.recv_string()
+            #print(f"Server replied: {message}\n")
 
         else:
             text = "No Device plugged in."
