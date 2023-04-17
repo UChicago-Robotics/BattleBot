@@ -3,14 +3,19 @@ import traceback
 import math
 import zmq
 import json
+import time
 
-ip = "192.168.8.1"
+host = "*"
 port = 5555
 
 context = zmq.Context()
-socket = context.socket(zmq.ROUTER)
-socket.bind(f"tcp://{ip}:{port}")
-print(f"Connected to {ip} {port}")
+socket = context.socket(zmq.PUB)
+# socket.setsockopt(zmq.IDENTITY, b'A')
+socket.bind(f"tcp://{host}:{port}")
+print(f"Connected to {host} {port}")
+
+time.sleep(5)
+print("Starting packets")
 
 offset_y = 64
 WIDTH = 812
@@ -164,11 +169,11 @@ try:
             controls_json = json.dumps(controls)
 
             ### UNCOMMENT THE NEXT THREE LINES FOR ACTUAL USE
-            # socket.send_string(controls_json)
+            socket.send_string(controls_json)
             # response = socket.recv_string()
             # packet = response.replace("\\", "").strip('"')
 
-            socket.send_multipart([b'A', bytes(controls_json, 'utf-8')])
+            # socket.send_multipart([b'A', bytes(controls_json, 'utf-8')])
             packet = json.loads(controls_json) ### COMMENT OUT THIS LINE WHEN USING -- TESTING ONLY LINE
             response_json = {
                 k: v for (k, v) in dict(packet).items()
@@ -256,8 +261,8 @@ try:
             packet = {"type":"pause"}
             print("paused")
             ### UNCOMMENT THIS LINE FOR ACTUAL USE
-            # socket.send_string(json.dumps(packet))
-            socket.send_multipart([b'A', bytes(json.dumps(packet), 'utf-8')])
+            socket.send_string(json.dumps(packet))
+            # socket.send_multipart([b'A', bytes(json.dumps(packet), 'utf-8')])
         else:
             text = "No Controller Detected"
             screen.blit(font.render(text, True, RED), (24, 140))
